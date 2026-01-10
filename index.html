@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Absen Karyawan</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+*{box-sizing:border-box;font-family:"Segoe UI",sans-serif}
+body{
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:linear-gradient(135deg,#4facfe,#00f2fe);
+}
+.card{
+  background:#fff;
+  width:330px;
+  padding:25px;
+  border-radius:14px;
+  box-shadow:0 8px 20px rgba(0,0,0,.15);
+}
+h2{text-align:center;margin-bottom:15px}
+input{
+  width:100%;
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  margin-bottom:12px;
+}
+button{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:8px;
+  color:#fff;
+  font-size:15px;
+  cursor:pointer;
+}
+.masuk{background:#28a745}
+.pulang{background:#dc3545;margin-top:8px}
+#status{
+  margin-top:15px;
+  text-align:center;
+  font-size:14px;
+}
+.opsi{display:none;margin-bottom:12px}
+.opsi-title{font-size:14px;margin-bottom:8px;text-align:center}
+.opsi-item{
+  border:1px solid #ddd;
+  border-radius:10px;
+  padding:10px;
+  margin-bottom:8px;
+  cursor:pointer;
+  text-align:center;
+  font-size:14px;
+}
+.opsi-item.active{
+  background:#dc3545;
+  color:#fff;
+  border-color:#dc3545;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>ABSEN KARYAWAN</h2>
+
+  <input type="text" id="nama" placeholder="NAMA">
+
+  <div class="opsi" id="opsiPulang">
+    <div class="opsi-title">Pilih aktivitas:</div>
+    <div class="opsi-item" onclick="pilihOpsi(this,'Standby')">Standby</div>
+    <div class="opsi-item" onclick="pilihOpsi(this,'Storing')">Storing</div>
+    <div class="opsi-item" onclick="pilihOpsi(this,'Operator')">Operator</div>
+    <div class="opsi-item" onclick="pilihOpsi(this,'Motoris')">Motoris</div>
+    <div class="opsi-item" onclick="pilihOpsi(this,'Ngawal Mobil')">Ngawal Mobil</div>
+    <div class="opsi-item" onclick="pilihOpsi(this,'Kosong')">Kosong</div>
+  </div>    
+
+  <button class="masuk" onclick="absenMasuk()">Absen Masuk</button>
+  <button class="pulang" onclick="absenPulang()">Absen Pulang</button>
+
+  <div id="status"></div>
+</div>
+
+<script>
+const scriptURL = "https://script.google.com/macros/s/AKfycbyNcUxnCR0B1qGzECUm2tbyf3zigmRAGEwGAGO8_pWD6BoZwvwx3JhIYYFCv90Kuohl/exec";
+let aktivitasDipilih = "";
+
+function pilihOpsi(el, value){
+  document.querySelectorAll(".opsi-item").forEach(i=>i.classList.remove("active"));
+  el.classList.add("active");
+  aktivitasDipilih = value;
+}
+
+function absenMasuk(){
+  document.getElementById("opsiPulang").style.display = "none";
+  aktivitasDipilih = "";
+  kirim("Masuk", "");
+}
+
+function absenPulang(){
+  document.getElementById("opsiPulang").style.display = "block";
+  if(!aktivitasDipilih){
+    document.getElementById("status").innerText = "❌ Pilih aktivitas terlebih dahulu";
+    return;
+  }
+  kirim("Pulang", aktivitasDipilih);
+}
+
+function kirim(tipe, catatan){
+  const nama = document.getElementById("nama").value;
+  const status = document.getElementById("status");
+
+  if(!nama){
+    status.innerText = "❌ Nama wajib diisi";
+    return;
+  }
+
+  status.innerText = "📍 Mengambil lokasi...";
+
+  navigator.geolocation.getCurrentPosition(pos=>{
+    fetch(scriptURL,{
+      method:"POST",
+      body:JSON.stringify({
+        nama: nama,
+        tipe: tipe,
+        catatan: catatan,
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        lokasi:`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
+      })
+    })
+    .then(res=>res.json())
+    .then(res=>{
+      status.innerText = (res.status==="success"?"✅ ":"❌ ") + res.message;
+      aktivitasDipilih = "";
+      document.querySelectorAll(".opsi-item").forEach(i=>i.classList.remove("active"));
+    })
+    .catch(()=>{
+      status.innerText = "❌ Gagal mengirim data";
+    });
+
+  },()=>{
+    status.innerText = "❌ Lokasi tidak diizinkan";
+  },{enableHighAccuracy:true});
+}
+</script>
+
+</body>
+</html>
