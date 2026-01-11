@@ -3,130 +3,198 @@
 <head>
 <meta charset="UTF-8">
 <title>Absen Karyawan</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
-*{box-sizing:border-box;font-family:"Segoe UI",sans-serif}
-body{margin:0;min-height:100vh;display:flex;justify-content:center;align-items:center;background:linear-gradient(135deg,#4facfe,#00f2fe);}
-.card{background:#fff;width:330px;padding:25px;border-radius:14px;box-shadow:0 8px 20px rgba(0,0,0,.15);}
-h2{text-align:center;margin-bottom:15px}
-input{width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;margin-bottom:12px;cursor:pointer;}
-button{width:100%;padding:12px;border:none;border-radius:8px;color:#fff;font-size:15px;cursor:pointer;}
-.masuk{background:#28a745}
-.pulang{background:#dc3545;margin-top:8px}
-#status{margin-top:15px;text-align:center;font-size:14px;}
-.opsi{display:none;margin-bottom:12px}
-.opsi-title{font-size:14px;margin-bottom:8px;text-align:center}
-.opsi-item{border:1px solid #ddd;border-radius:10px;padding:10px;margin-bottom:8px;cursor:pointer;text-align:center;font-size:14px;}
-.opsi-item.active{background:#dc3545;color:#fff;border-color:#dc3545;}
-#namaList{max-height:120px;overflow-y:auto;margin-bottom:12px;display:none;}
+*{box-sizing:border-box;font-family:system-ui}
+body{
+    margin:0;
+    background:linear-gradient(135deg,#e9eef5,#f8fafc);
+}
+.screen{display:none;height:100vh;justify-content:center;align-items:center}
+.screen.active{display:flex}
+.box{
+    background:#fff;
+    width:360px;
+    padding:26px;
+    border-radius:16px;
+    text-align:center;
+    box-shadow:0 15px 35px rgba(0,0,0,.12);
+}
+h2{margin-top:0}
+select,button{
+    width:100%;
+    padding:13px;
+    margin-top:12px;
+    font-size:15px;
+    border-radius:10px;
+}
+button{border:none;cursor:pointer;font-weight:600}
+.masuk{background:#22c55e;color:white}
+.pulang{background:#ef4444;color:white}
+.opsi-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:18px;
+}
+.opsi-grid button{
+    background:#f1f5f9;
+    border:1px solid #cbd5e1;
+}
+.popup{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.4);
+    justify-content:center;
+    align-items:center;
+}
+.popup.active{display:flex}
+.popup-box{
+    background:#fff;
+    padding:22px;
+    border-radius:16px;
+    width:300px;
+}
+.popup-btn{
+    display:flex;
+    gap:10px;
+    margin-top:15px;
+}
+.popup-btn button{flex:1;padding:10px}
 </style>
 </head>
+
 <body>
 
-<div class="card">
-  <h2>ABSEN KARYAWAN</h2>
-
-  <input type="text" id="nama" placeholder="NAMA" readonly onclick="toggleNamaList()">
-  <div class="opsi" id="namaList">
-    <div class="opsi-item" onclick="pilihNama('Udin')">Udin</div>
-    <div class="opsi-item" onclick="pilihNama('Gumgum')">Gumgum</div>
-    <div class="opsi-item" onclick="pilihNama('Rosidik')">Rosidik</div>
-    <div class="opsi-item" onclick="pilihNama('Yunus')">Yunus</div>
-    <div class="opsi-item" onclick="pilihNama('Angga')">Angga</div>
-    <div class="opsi-item" onclick="pilihNama('Simin')">Simin</div>
-  </div>
-
-  <div class="opsi" id="opsiPulang">
-    <div class="opsi-title">Pilih aktivitas:</div>
-    <div class="opsi-item" onclick="pilihOpsi(this,'Standby')">Standby</div>
-    <div class="opsi-item" onclick="pilihOpsi(this,'Storing')">Storing</div>
-    <div class="opsi-item" onclick="pilihOpsi(this,'Operator')">Operator</div>
-    <div class="opsi-item" onclick="pilihOpsi(this,'Motoris')">Motoris</div>
-    <div class="opsi-item" onclick="pilihOpsi(this,'Ngawal Mobil')">Ngawal Mobil</div>
-    <div class="opsi-item" onclick="pilihOpsi(this,'Kosong')">Kosong</div>
-  </div>    
-
-  <button class="masuk" onclick="absenMasuk()">Absen Masuk</button>
-  <button class="pulang" onclick="absenPulang()">Absen Pulang</button>
-
-  <div id="status"></div>
-</div>
-
 <script>
-const scriptURL = "https://script.google.com/macros/s/AKfycbzs_jFZDXKZHT-B8dtpwxc7kN8Dmz_MX8Hwsy9sRGtQkUlPefkBFdfDiQnObhSqrEZI/exec"; // ganti dengan URL Web App
-let aktivitasDipilih = "";
+/* ===== KONFIGURASI ===== */
+const OFFICE_LAT = -6.2081517;
+const OFFICE_LNG = 106.9996654;
+const MAX_DISTANCE = 50;
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbye2aL4Q9Gu5O2aW-xcyhSvBl6EoaXyfkc6jsY6nFpXDAgm3BqeUc-0colCF_tm-tH_aA/exec";
 
-function pilihOpsi(el, value){
-  document.querySelectorAll("#opsiPulang .opsi-item").forEach(i=>i.classList.remove("active"));
-  el.classList.add("active");
-  aktivitasDipilih = value;
+/* ===== VAR ===== */
+let lokasiUser = {};
+let pilihan = "";
+
+/* ===== UTIL ===== */
+function hitungJarak(lat1,lon1,lat2,lon2){
+    const R=6371000;
+    const dLat=(lat2-lat1)*Math.PI/180;
+    const dLon=(lon2-lon1)*Math.PI/180;
+    const a=Math.sin(dLat/2)**2+
+        Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
+        Math.sin(dLon/2)**2;
+    return R*(2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
 }
 
+/* ===== KIRIM KE SHEET ===== */
+function kirimData(status, keterangan="-"){
+    fetch(SCRIPT_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            nama:nama.value,
+            status:status,
+            waktu:new Date().toLocaleTimeString("id-ID"),
+            gps:lokasiUser.maps,
+            keterangan:keterangan
+        })
+    });
+}
+
+/* ===== GPS CEK ===== */
+function cekLokasi(callback){
+    if(!nama.value) return alert("Pilih nama karyawan");
+
+    navigator.geolocation.getCurrentPosition(pos=>{
+        const lat=pos.coords.latitude;
+        const lng=pos.coords.longitude;
+        const jarak=Math.round(hitungJarak(lat,lng,OFFICE_LAT,OFFICE_LNG));
+
+        if(jarak>MAX_DISTANCE){
+            alert("❌ Absen ditolak\nJarak "+jarak+" meter dari kantor");
+            return;
+        }
+
+        lokasiUser={
+            lat,lng,jarak,
+            maps:`https://maps.google.com/?q=${lat},${lng}`
+        };
+        callback();
+    },()=>alert("GPS tidak aktif"),{enableHighAccuracy:true});
+}
+
+/* ===== ABSEN ===== */
 function absenMasuk(){
-  document.getElementById("opsiPulang").style.display="none";
-  aktivitasDipilih="";
-  kirim("Masuk","");
+    kirimData("Masuk");
+    alert("✅ Absen Masuk Berhasil");
 }
 
-function absenPulang(){
-  document.getElementById("opsiPulang").style.display="block";
-  if(!aktivitasDipilih){
-    document.getElementById("status").innerHTML="❌ Pilih aktivitas terlebih dahulu";
-    return;
-  }
-  kirim("Pulang", aktivitasDipilih);
+function kePulang(){
+    screenAbsen.classList.remove("active");
+    screenPulang.classList.add("active");
 }
 
-function kirim(tipe, catatan){
-  const nama=document.getElementById("nama").value;
-  const status=document.getElementById("status");
-  if(!nama){status.innerHTML="❌ Nama wajib diisi";return;}
-  status.innerHTML="📍 Mengambil lokasi...";
-  navigator.geolocation.getCurrentPosition(pos=>{
-    fetch(scriptURL,{
-      method:"POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        nama:nama,
-        tipe:tipe,
-        catatan:catatan,
-        lat:pos.coords.latitude,
-        lng:pos.coords.longitude,
-        lokasi:`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
-      })
-    })
-    .then(res=>res.json())
-    .then(res=>{
-      status.innerHTML=(res.status==="success"?"✅ ":"❌ ")+res.message;
-      aktivitasDipilih="";
-      document.querySelectorAll("#opsiPulang .opsi-item").forEach(i=>i.classList.remove("active"));
-    })
-    .catch(()=>{status.innerHTML="❌ Gagal mengirim data";});
-  },()=>{status.innerHTML="❌ Lokasi tidak diizinkan";},{enableHighAccuracy:true});
+function pilihOpsi(o){
+    pilihan=o;
+    popupText.innerText="Konfirmasi aktivitas:\n"+o;
+    popup.classList.add("active");
 }
 
-function toggleNamaList(){
-  const list=document.getElementById("namaList");
-  list.style.display=list.style.display==="block"?"none":"block";
+function konfirmasi(){
+    kirimData("Pulang",pilihan);
+    alert("✅ Absen Pulang Berhasil");
+    popup.classList.remove("active");
+    screenPulang.classList.remove("active");
+    screenAbsen.classList.add("active");
 }
 
-function pilihNama(nama){
-  const now=new Date();
-  const jam=now.getHours();
-  const currentNama=document.getElementById("nama").value;
-  const status=document.getElementById("status");
-
-  if(currentNama && currentNama!==nama && jam<17){
-    status.innerHTML=
-      "<div style='text-align:center; font-weight:bold; font-size:16px; color:red; margin-bottom:8px;'>PESAN!!</div>" +
-      "<div style='text-align:center; font-size:14px; color:red;'>ANDA TIDAK BISA ABSEN LAGI KARENA ANDA SUDAH ABSEN,<br>JIKA INGIN ABSEN LAGI MAKA TUNGGU SAMPAI JAM 17.00<br>MAKA SISTEM ABSEN AKAN BISA DI AKSES LAGI</div>";
-    return;
-  }
-
-  document.getElementById("nama").value=nama;
-  document.getElementById("namaList").style.display="none";
+function batal(){
+    popup.classList.remove("active");
 }
 </script>
+
+<div class="screen active" id="screenAbsen">
+    <div class="box">
+        <h2>Absen Karyawan</h2>
+        <select id="nama">
+            <option value="">Pilih Nama</option>
+            <option>Udin</option>
+            <option>Rosidik</option>
+            <option>Gumgum</option>
+            <option>Yunus</option>
+            <option>Wasimin</option>
+            <option>Angga</option>
+        </select>
+        <button class="masuk" onclick="cekLokasi(absenMasuk)">Absen Masuk</button>
+        <button class="pulang" onclick="cekLokasi(kePulang)">Absen Pulang</button>
+    </div>
+</div>
+
+<div class="screen" id="screenPulang">
+    <div class="box">
+        <h2>Aktivitas Kerja</h2>
+        <div class="opsi-grid">
+            <button onclick="pilihOpsi('Standby')">Standby</button>
+            <button onclick="pilihOpsi('Storing')">Storing</button>
+            <button onclick="pilihOpsi('Operator')">Operator</button>
+            <button onclick="pilihOpsi('Motoris')">Motoris</button>
+            <button onclick="pilihOpsi('Ngawal Mobil')">Ngawal Mobil</button>
+            <button onclick="pilihOpsi('Mengirim Barang')">Mengirim Barang</button>
+        </div>
+    </div>
+</div>
+
+<div class="popup" id="popup">
+    <div class="popup-box">
+        <p id="popupText"></p>
+        <div class="popup-btn">
+            <button onclick="konfirmasi()">✔</button>
+            <button onclick="batal()">✖</button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
