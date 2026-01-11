@@ -53,7 +53,7 @@ button{width:100%;padding:12px;border:none;border-radius:8px;color:#fff;font-siz
 </div>
 
 <script>
-const scriptURL = "https://script.google.com/macros/s/AKfycbxieWYm3ow7cmZz1sPEHVoYoJZWCgCb9cphFOPbL3GBCwj1BOhIPibpit9U1p7F9Nbf/exec";
+const scriptURL = "https://script.google.com/macros/s/AKfycbwjMxXz1--CNql6UKQvXirOWXLte2niJymy39IdvXWdZSU-EIKLOxGQwNDRPWd2UzVt/exec"; // ganti dengan URL Web App
 let aktivitasDipilih = "";
 
 function pilihOpsi(el, value){
@@ -62,11 +62,19 @@ function pilihOpsi(el, value){
   aktivitasDipilih = value;
 }
 
-function absenMasuk(){document.getElementById("opsiPulang").style.display="none";aktivitasDipilih="";kirim("Masuk","");}
+function absenMasuk(){
+  document.getElementById("opsiPulang").style.display="none";
+  aktivitasDipilih="";
+  kirim("Masuk","");
+}
+
 function absenPulang(){
   document.getElementById("opsiPulang").style.display="block";
-  if(!aktivitasDipilih){document.getElementById("status").innerHTML="❌ Pilih aktivitas terlebih dahulu";return;}
-  kirim("Pulang",aktivitasDipilih);
+  if(!aktivitasDipilih){
+    document.getElementById("status").innerHTML="❌ Pilih aktivitas terlebih dahulu";
+    return;
+  }
+  kirim("Pulang", aktivitasDipilih);
 }
 
 function kirim(tipe, catatan){
@@ -75,7 +83,18 @@ function kirim(tipe, catatan){
   if(!nama){status.innerHTML="❌ Nama wajib diisi";return;}
   status.innerHTML="📍 Mengambil lokasi...";
   navigator.geolocation.getCurrentPosition(pos=>{
-    fetch(scriptURL,{method:"POST",body:JSON.stringify({nama:nama,tipe:tipe,catatan:catatan,lat:pos.coords.latitude,lng:pos.coords.longitude,lokasi:`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`})})
+    fetch(scriptURL,{
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        nama:nama,
+        tipe:tipe,
+        catatan:catatan,
+        lat:pos.coords.latitude,
+        lng:pos.coords.longitude,
+        lokasi:`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
+      })
+    })
     .then(res=>res.json())
     .then(res=>{
       status.innerHTML=(res.status==="success"?"✅ ":"❌ ")+res.message;
@@ -97,7 +116,7 @@ function pilihNama(nama){
   const currentNama=document.getElementById("nama").value;
   const status=document.getElementById("status");
 
-  if(jam<17 && currentNama && currentNama!==nama){
+  if(currentNama && currentNama!==nama && jam<17){
     status.innerHTML=
       "<div style='text-align:center; font-weight:bold; font-size:16px; color:red; margin-bottom:8px;'>PESAN!!</div>" +
       "<div style='text-align:center; font-size:14px; color:red;'>ANDA TIDAK BISA ABSEN LAGI KARENA ANDA SUDAH ABSEN,<br>JIKA INGIN ABSEN LAGI MAKA TUNGGU SAMPAI JAM 17.00<br>MAKA SISTEM ABSEN AKAN BISA DI AKSES LAGI</div>";
