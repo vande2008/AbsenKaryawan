@@ -25,7 +25,7 @@ body{
     box-shadow:0 15px 35px rgba(0,0,0,.12);
 }
 h2{margin-top:0}
-select,button{
+select,button,textarea{
     width:100%;
     padding:13px;
     margin-top:12px;
@@ -76,7 +76,7 @@ button{border:none;cursor:pointer;font-weight:600}
 const OFFICE_LAT = -6.2081517;
 const OFFICE_LNG = 106.9996654;
 const MAX_DISTANCE = 50;
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbye2aL4Q9Gu5O2aW-xcyhSvBl6EoaXyfkc6jsY6nFpXDAgm3BqeUc-0colCF_tm-tH_aA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZPg8Se2NZ_tb0xNHsj2V1ulxzAFVljubcK3n5t9ujuzVESHfqSQ7xYepmKKPBQmBrLg/execx";
 
 /* ===== VAR ===== */
 let lokasiUser = {};
@@ -94,15 +94,16 @@ function hitungJarak(lat1,lon1,lat2,lon2){
 }
 
 /* ===== KIRIM KE SHEET ===== */
-function kirimData(status, keterangan="-"){
+function kirimData(status, keterangan="-", izin="-"){
     fetch(SCRIPT_URL,{
         method:"POST",
         body:JSON.stringify({
-            nama:nama.value,
-            status:status,
-            waktu:new Date().toLocaleTimeString("id-ID"),
-            gps:lokasiUser.maps,
-            keterangan:keterangan
+            nama: nama.value,
+            status: status,
+            waktu: new Date().toLocaleTimeString("id-ID"),
+            gps: lokasiUser.maps || "",
+            keterangan: keterangan,
+            izin: izin
         })
     });
 }
@@ -116,15 +117,16 @@ function cekLokasi(callback){
         const lng=pos.coords.longitude;
         const jarak=Math.round(hitungJarak(lat,lng,OFFICE_LAT,OFFICE_LNG));
 
-        if(jarak>MAX_DISTANCE){
-            alert("❌ Absen ditolak\nJarak "+jarak+" meter dari kantor");
-            return;
-        }
-
-        lokasiUser={
+        lokasiUser = {
             lat,lng,jarak,
             maps:`https://maps.google.com/?q=${lat},${lng}`
         };
+
+        if(jarak > MAX_DISTANCE){
+            popupIzin.classList.add("active");
+            return;
+        }
+
         callback();
     },()=>alert("GPS tidak aktif"),{enableHighAccuracy:true});
 }
@@ -147,7 +149,7 @@ function pilihOpsi(o){
 }
 
 function konfirmasi(){
-    kirimData("Pulang",pilihan);
+    kirimData("Pulang", pilihan);
     alert("✅ Absen Pulang Berhasil");
     popup.classList.remove("active");
     screenPulang.classList.remove("active");
@@ -157,8 +159,23 @@ function konfirmasi(){
 function batal(){
     popup.classList.remove("active");
 }
+
+/* ===== SISTEM IZIN ADMIN ===== */
+function kirimIzin(){
+    if(!alasan.value) return alert("Alasan wajib diisi");
+
+    kirimData("IZIN", alasan.value, "Pending");
+    alert("📨 Izin dikirim ke admin\nMenunggu persetujuan");
+    popupIzin.classList.remove("active");
+    alasan.value = "";
+}
+
+function batalIzin(){
+    popupIzin.classList.remove("active");
+}
 </script>
 
+<!-- SCREEN ABSEN -->
 <div class="screen active" id="screenAbsen">
     <div class="box">
         <h2>Absen Karyawan</h2>
@@ -176,6 +193,7 @@ function batal(){
     </div>
 </div>
 
+<!-- SCREEN PULANG -->
 <div class="screen" id="screenPulang">
     <div class="box">
         <h2>Aktivitas Kerja</h2>
@@ -190,6 +208,7 @@ function batal(){
     </div>
 </div>
 
+<!-- POPUP KONFIRMASI PULANG -->
 <div class="popup" id="popup">
     <div class="popup-box">
         <p id="popupText"></p>
@@ -198,6 +217,20 @@ function batal(){
             <button onclick="batal()">✖</button>
         </div>
     </div>
+</div>
+
+<!-- POPUP IZIN ADMIN -->
+<div class="popup" id="popupIzin">
+  <div class="popup-box">
+    <h3>Izin ke Admin</h3>
+    <textarea id="alasan" placeholder="Tulis alasan kenapa absen di luar lokasi..."
+      style="width:100%;height:80px;padding:10px;border-radius:10px;margin-top:10px">
+    </textarea>
+    <div class="popup-btn">
+      <button onclick="kirimIzin()">Kirim</button>
+      <button onclick="batalIzin()">Batal</button>
+    </div>
+  </div>
 </div>
 
 </body>
